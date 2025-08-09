@@ -1,7 +1,13 @@
 "use client";
 
 import { ArrowUp, Bot } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+  useCallback,
+} from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { motion } from "framer-motion";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +22,10 @@ const ChatPage = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingMessages, setIsFetchingMessages] = useState(true);
+  const [streamingMessage, setStreamingMessage] = useState<string>("");
+  const [isStreaming, setIsStreaming] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const { getMessagesByChatId, setMessages, addMessage, chatIdToMessages } =
     useChatStore();
 
@@ -116,11 +126,25 @@ const ChatPage = () => {
       isCancelled = true; //TODO: what is isCancelled
     };
   }, [conversationId, router]); //TODO: why is router needed here?
+
+  // Auto-scroll to bottom when new messages arrive or when streaming
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatIdToMessages[conversationId], streamingMessage, scrollToBottom]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading || isStreaming) return;
+
     setIsLoading(true);
     const content = input.trim();
-    if (!content) return;
+    if (!content) {
+      setIsLoading(false);
+      return;
+    }
 
     const newMsg: UiMessage = {
       id: crypto.randomUUID(),
@@ -134,18 +158,77 @@ const ChatPage = () => {
     setMessages(conversationId, [...existingMessages, newMsg]);
     setInput("");
 
-    // Persist to backend
     try {
-      // Add message to existing chat
-      await fetch(`/api/chat/${conversationId}`, {
+      setIsStreaming(true);
+      setStreamingMessage("");
+
+      // Send message and start streaming response
+      const response = await fetch(`/api/chat/${conversationId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sender: "user", text: content }),
       });
-    } catch (_) {
-      // ignore for now
+
+      if (!response.ok) {
+        throw new Error("Failed to send message");
+      }
+
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("No response body");
+      }
+
+      const decoder = new TextDecoder();
+      let accumulatedMessage = "";
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split("\n");
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+
+                if (data.type === "chunk") {
+                  accumulatedMessage += data.content;
+                  setStreamingMessage(accumulatedMessage);
+                } else if (data.type === "complete") {
+                  // Add the complete AI message to the store
+                  const aiMessage: UiMessage = {
+                    id: crypto.randomUUID(),
+                    role: "assistant",
+                    content: data.content,
+                  };
+
+                  const currentMessages =
+                    getMessagesByChatId(conversationId) ?? [];
+                  setMessages(conversationId, [...currentMessages, aiMessage]);
+                  setStreamingMessage("");
+                  break;
+                } else if (data.type === "error") {
+                  console.error("Streaming error:", data.error);
+                  break;
+                }
+              } catch (parseError) {
+                console.error("Failed to parse SSE data:", parseError);
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    } catch (error) {
+      console.error("Error in handleSubmit:", error);
     } finally {
       setIsLoading(false);
+      setIsStreaming(false);
     }
   };
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -154,8 +237,11 @@ const ChatPage = () => {
   return (
     <div className="h-screen flex flex-col">
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-32">
-        <div className="w-full max-w-4xl mx-auto">
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto px-4 pt-4 pb-32 scroll-smooth scrollbar-pretty"
+      >
+        <div className="w-full max-w-4xl mx-auto space-y-4">
           {isFetchingMessages && (
             <div className="w-full py-6 flex justify-center">
               <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
@@ -169,7 +255,7 @@ const ChatPage = () => {
               return (
                 <motion.div
                   key={msg.id}
-                  className={`mb-3 flex flex-col ${
+                  className={`flex flex-col ${
                     msg.role === "user" ? "items-end" : "items-start"
                   }`}
                   initial={{ opacity: 0, y: 10 }}
@@ -203,7 +289,7 @@ const ChatPage = () => {
                             : "bg-black/20 rounded-tl-none w-full"
                         }`}
                       >
-                        <p className="text-white text-sm leading-relaxed">
+                        <p className="text-white text-sm leading-relaxed whitespace-pre-wrap">
                           {mainContent}
                         </p>
                       </div>
@@ -213,9 +299,76 @@ const ChatPage = () => {
               );
             })}
 
+          {/* Streaming Message */}
+          {isStreaming && streamingMessage && (
+            <motion.div
+              className="flex flex-col items-start"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Avatar>
+                  <Bot size={14} className="text-white" />
+                </Avatar>
+                <span className="text-xs text-gray-400">Assistant</span>
+                <div className="flex space-x-1">
+                  <div className="w-1 h-1 bg-white rounded-full animate-pulse"></div>
+                  <div
+                    className="w-1 h-1 bg-white rounded-full animate-pulse"
+                    style={{ animationDelay: "0.2s" }}
+                  ></div>
+                  <div
+                    className="w-1 h-1 bg-white rounded-full animate-pulse"
+                    style={{ animationDelay: "0.4s" }}
+                  ></div>
+                </div>
+              </div>
+              <div className="bg-black/20 rounded-xl rounded-tl-none w-full p-3">
+                <p className="text-white text-sm leading-relaxed whitespace-pre-wrap">
+                  {streamingMessage}
+                  <span className="inline-block w-2 h-5 bg-white animate-pulse ml-1"></span>
+                </p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Loading indicator when waiting for stream to start */}
+          {isLoading && !isStreaming && (
+            <motion.div
+              className="flex flex-col items-start"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Avatar>
+                  <Bot size={14} className="text-white" />
+                </Avatar>
+                <span className="text-xs text-gray-400">Assistant</span>
+              </div>
+              <div className="bg-black/20 rounded-xl rounded-tl-none w-full p-3">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-white rounded-full animate-bounce"></div>
+                  <div
+                    className="w-2 h-2 bg-white rounded-full animate-bounce"
+                    style={{ animationDelay: "0.1s" }}
+                  ></div>
+                  <div
+                    className="w-2 h-2 bg-white rounded-full animate-bounce"
+                    style={{ animationDelay: "0.2s" }}
+                  ></div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Scroll anchor */}
+          <div className="h-10" ref={messagesEndRef} />
+
           {/* Input Area */}
           <motion.div
-            className="fixed bottom-0 left-0 right-0 mx-auto max-w-4xl px-4 md:px-0 w-full pb-6"
+            className="fixed bottom-0 left-60 right-0 mx-auto max-w-4xl px-4 md:px-0 w-full pb-6"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
@@ -233,21 +386,21 @@ const ChatPage = () => {
                   }}
                   placeholder="Ask me anything..."
                   className="w-full text-sm h-24 pl-4 pr-24 bg-white/10 backdrop-blur-xl border-white/20 text-white placeholder:text-gray-400 focus:bg-white/15 focus:border-white/30 transition-all duration-300 group-hover:border-white/30"
-                  disabled={isLoading}
+                  disabled={isLoading || isStreaming}
                   autoFocus
                 />
               </div>
               <motion.button
                 type="submit"
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 text-white transition-all duration-300 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/10"
-                disabled={isLoading || !input.trim()}
+                disabled={isLoading || isStreaming || !input.trim()}
               >
                 <ArrowUp
                   size={18}
                   className="transition-transform duration-300 group-hover:translate-y-[-2px]"
                 />
               </motion.button>
-              {isLoading && (
+              {(isLoading || isStreaming) && (
                 <div className="absolute right-14 top-1/2 transform -translate-y-1/2">
                   <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                 </div>

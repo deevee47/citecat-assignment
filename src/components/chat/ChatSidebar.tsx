@@ -138,7 +138,7 @@ const ChatSidebar = memo(() => {
       {/* Chat List */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-2"
+        className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-pretty"
       >
         {chats.length === 0 ? (
           <div className="text-center py-8">
