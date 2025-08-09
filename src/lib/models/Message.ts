@@ -36,3 +36,4 @@ export type MessageModel = Model<Message>;
 const Message =
   (models.Message as MessageModel) || model<Message>("Message", MessageSchema);
 export default Message;
+
