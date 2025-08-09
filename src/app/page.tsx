@@ -33,13 +33,20 @@ export default function ChatPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 1.2, ease: "easeOut" }}
       >
-        <form onSubmit={() => submitChat()} className="relative group">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submitChat();
+          }}
+          className="relative group"
+        >
           <div className="relative">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
                   submitChat();
                 }
               }}
@@ -51,7 +58,11 @@ export default function ChatPage() {
           </div>
           <motion.button
             type="submit"
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 sm:p-2 text-white transition-all duration-300 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/10"
+            onClick={(e) => {
+              e.preventDefault();
+              submitChat();
+            }}
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 sm:p-2 text-white transition-all duration-300 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/10 touch-manipulation"
             disabled={isLoading || !input.trim()}
           >
             <ArrowUp

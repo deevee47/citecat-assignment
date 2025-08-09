@@ -24,6 +24,8 @@ const ChatPage = () => {
   const [isFetchingMessages, setIsFetchingMessages] = useState(true);
   const [streamingMessage, setStreamingMessage] = useState<string>("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [hasTriggeredInitialResponse, setHasTriggeredInitialResponse] =
+    useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const { getMessagesByChatId, setMessages, addMessage, chatIdToMessages } =
@@ -126,6 +128,127 @@ const ChatPage = () => {
       isCancelled = true; //TODO: what is isCancelled
     };
   }, [conversationId, router]); //TODO: why is router needed here?
+
+  // Effect to trigger AI response for initial message
+  useEffect(() => {
+    const triggerInitialResponse = async () => {
+      if (
+        hasTriggeredInitialResponse ||
+        isFetchingMessages ||
+        isLoading ||
+        isStreaming
+      ) {
+        return;
+      }
+
+      const messages = getMessagesByChatId(conversationId);
+      if (!messages || messages.length === 0) {
+        return;
+      }
+
+      // Check if we have only one user message and no assistant response
+      const userMessages = messages.filter((msg) => msg.role === "user");
+      const assistantMessages = messages.filter(
+        (msg) => msg.role === "assistant"
+      );
+
+      if (userMessages.length === 1 && assistantMessages.length === 0) {
+        setHasTriggeredInitialResponse(true);
+        const firstUserMessage = userMessages[0];
+
+        try {
+          setIsStreaming(true);
+          setStreamingMessage("");
+
+          // Send message and start streaming response
+          const response = await fetch(`/api/chat/${conversationId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sender: "user",
+              text: firstUserMessage.content,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to send message");
+          }
+
+          // Handle streaming response
+          const reader = response.body?.getReader();
+          if (!reader) {
+            throw new Error("No response body");
+          }
+
+          const decoder = new TextDecoder();
+          let accumulatedMessage = "";
+
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              const chunk = decoder.decode(value, { stream: true });
+              const lines = chunk.split("\n");
+
+              for (const line of lines) {
+                if (line.startsWith("data: ")) {
+                  try {
+                    const data = JSON.parse(line.slice(6));
+
+                    if (data.type === "chunk") {
+                      accumulatedMessage += data.content;
+                      setStreamingMessage(accumulatedMessage);
+                    } else if (data.type === "complete") {
+                      // Add the complete AI message to the store
+                      const aiMessage: UiMessage = {
+                        id: crypto.randomUUID(),
+                        role: "assistant",
+                        content: data.content,
+                      };
+
+                      const currentMessages =
+                        getMessagesByChatId(conversationId) ?? [];
+                      setMessages(conversationId, [
+                        ...currentMessages,
+                        aiMessage,
+                      ]);
+                      setStreamingMessage("");
+                      break;
+                    } else if (data.type === "error") {
+                      console.error("Streaming error:", data.error);
+                      break;
+                    }
+                  } catch (parseError) {
+                    console.error("Failed to parse SSE data:", parseError);
+                  }
+                }
+              }
+            }
+          } finally {
+            reader.releaseLock();
+          }
+        } catch (error) {
+          console.error("Error in triggerInitialResponse:", error);
+          setHasTriggeredInitialResponse(false); // Reset so user can try again
+        } finally {
+          setIsStreaming(false);
+        }
+      }
+    };
+
+    // Small delay to ensure messages are loaded first
+    const timeoutId = setTimeout(triggerInitialResponse, 500);
+    return () => clearTimeout(timeoutId);
+  }, [
+    conversationId,
+    isFetchingMessages,
+    hasTriggeredInitialResponse,
+    isLoading,
+    isStreaming,
+    getMessagesByChatId,
+    setMessages,
+  ]);
 
   // Auto-scroll to bottom when new messages arrive or when streaming
   const scrollToBottom = useCallback(() => {
