@@ -1,4 +1,5 @@
-import React from 'react'
+"use client";
+import React from "react";
 
 const BackgroundGradient = () => (
   <>
@@ -28,4 +29,4 @@ const BackgroundGradient = () => (
   </>
 );
 
-export default BackgroundGradient
+export default BackgroundGradient;

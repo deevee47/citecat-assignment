@@ -3,6 +3,7 @@ import { ArrowUp } from "lucide-react";
 import { motion } from "framer-motion";
 import { BookOpenIcon, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useChatStore } from "@/lib/store/chatStore";
 
 import React, { useEffect, useState } from "react";
 
@@ -53,19 +54,19 @@ const ChatFallback = () => {
   const [greeting, setGreeting] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { setInitialMessage } = useChatStore();
   useEffect(() => {
     const randomGreeting =
       greetings[Math.floor(Math.random() * greetings.length)];
     setGreeting(randomGreeting);
   }, []);
 
-  const handleSubmit = async (task: string) => {
-    if (!task.trim() || isLoading) return;
-
+  const submitChat = async (text: string) => {
+    if (isLoading) return;
     setIsLoading(true);
-
     const conversationId = crypto.randomUUID();
-    sessionStorage.setItem(`chat-${conversationId}-initial`, task);
+    // Store first message in Zustand for instant render on chat page
+    setInitialMessage(conversationId, text);
     router.push(`/chat/${conversationId}`);
   };
 
@@ -152,7 +153,7 @@ const ChatFallback = () => {
               <motion.div
                 key={index}
                 className="bg-black/20 backdrop-blur-xl border border-white/10 rounded-xl p-3 hover:bg-black/30 transition-all duration-200 cursor-pointer group"
-                onClick={() => handleSubmit(task)}
+                onClick={() => submitChat(task)}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{

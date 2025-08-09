@@ -6,66 +6,147 @@ import { Avatar } from "@/components/ui/avatar";
 import { motion } from "framer-motion";
 import { Textarea } from "@/components/ui/textarea";
 import { useParams, useRouter } from "next/navigation";
-type UiMessage = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-};
+import { useChatStore, type UiMessage } from "@/lib/store/chatStore";
 
 const ChatPage = () => {
   const params = useParams();
   const router = useRouter();
   const conversationId = useMemo(() => params.id as string, [params.id]);
 
-  const [messages, setMessages] = useState<UiMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingMessages, setIsFetchingMessages] = useState(true);
+  const { getMessagesByChatId, setMessages, addMessage, chatIdToMessages } =
+    useChatStore();
 
   useEffect(() => {
     let isCancelled = false;
 
-    const fetchMessages = async () => {
+    const initFromStoreOrFetch = async () => {
       try {
-        const res = await fetch(`/api/chat/${conversationId}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-          cache: "no-store",
-        });
+        // First, try to fetch from backend
+        try {
+          const res = await fetch(`/api/chat/${conversationId}`, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+          });
 
-        //TODO: but if the first msg is in zustand memory, then we can just fetch the messages from zustand memory, also then create a new chat through api with the first msg and then fetch the messages from the api.
-        if (res.status === 404) {
-          router.replace("/");
-          return;
+          if (res.ok) {
+            const data = await res.json();
+            // Convert backend messages to UI format
+            const uiMessages: UiMessage[] = data.messages.map((msg: any) => ({
+              id: msg._id || crypto.randomUUID(),
+              role: msg.sender === "user" ? "user" : "assistant",
+              content: msg.text,
+            }));
+
+            // Update store with fetched messages
+            setMessages(conversationId, uiMessages);
+            if (!isCancelled) setIsFetchingMessages(false);
+            return;
+          } else if (res.status === 404) {
+            // Chat doesn't exist in backend, check local store
+            const existing = getMessagesByChatId(conversationId);
+
+            if (existing && existing.length > 0) {
+              // We have local messages, create chat in backend
+              setMessages(conversationId, existing);
+
+              const createResponse = await fetch(`/api/chats`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  chatId: conversationId,
+                  firstMessage: existing[0].content,
+                  sender: "user",
+                }),
+              });
+
+              if (createResponse.ok) {
+                const createdChat = await createResponse.json();
+                // Add the new chat to the sidebar list
+                const { prependNewChat } = useChatStore.getState();
+                prependNewChat({
+                  _id: createdChat.chat._id,
+                  chatId: conversationId,
+                  title: createdChat.chat.title || "New Chat",
+                  createdAt: createdChat.chat.createdAt,
+                  updatedAt: createdChat.chat.updatedAt,
+                });
+              }
+            } else {
+              // No messages anywhere, redirect to home
+              router.replace("/");
+              return;
+            }
+          } else {
+            // Other error, check local store as fallback
+            const existing = getMessagesByChatId(conversationId);
+            if (existing && existing.length > 0) {
+              setMessages(conversationId, existing);
+            } else {
+              router.replace("/");
+              return;
+            }
+          }
+        } catch (fetchError) {
+          console.warn(
+            "Failed to fetch from backend, checking local store:",
+            fetchError
+          );
+          // Network error, fall back to local store
+          const existing = getMessagesByChatId(conversationId);
+          if (existing && existing.length > 0) {
+            setMessages(conversationId, existing);
+          } else {
+            router.replace("/");
+            return;
+          }
         }
-
-        if (!res.ok) {
-          throw new Error("Failed to fetch messages");
-        }
-
-        const data = await res.json();
-        if (isCancelled) return;
-        const mapped: UiMessage[] = (data.messages ?? []).map((m: any) => ({
-          id: m._id as string,
-          role: m.sender === "ai" ? "assistant" : "user",
-          content: m.text as string,
-        }));
-        setMessages(mapped);
       } catch (_err) {
+        console.error(_err);
         router.replace("/");
       } finally {
         if (!isCancelled) setIsFetchingMessages(false);
       }
     };
 
-    if (conversationId) fetchMessages();
+    if (conversationId) initFromStoreOrFetch();
     return () => {
-      isCancelled = true;
+      isCancelled = true; //TODO: what is isCancelled
     };
   }, [conversationId, router]); //TODO: why is router needed here?
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    const content = input.trim();
+    if (!content) return;
+
+    const newMsg: UiMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content,
+    };
+
+    const existingMessages = getMessagesByChatId(conversationId) ?? [];
+
+    addMessage(conversationId, newMsg);
+    setMessages(conversationId, [...existingMessages, newMsg]);
+    setInput("");
+
+    // Persist to backend
+    try {
+      // Add message to existing chat
+      await fetch(`/api/chat/${conversationId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sender: "user", text: content }),
+      });
+    } catch (_) {
+      // ignore for now
+    } finally {
+      setIsLoading(false);
+    }
   };
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
@@ -82,7 +163,7 @@ const ChatPage = () => {
           )}
 
           {!isFetchingMessages &&
-            messages.map((msg, index) => {
+            chatIdToMessages[conversationId]?.map((msg, index) => {
               let mainContent = msg.content;
 
               return (

@@ -1,28 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowUp } from "lucide-react";
 import { motion } from "framer-motion";
 import ChatFallback from "@/components/main-chat/ChatFallback";
+import { useChatStore } from "@/lib/store/chatStore";
 
 export default function ChatPage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { setInitialMessage } = useChatStore();
 
   const submitChat = async () => {
     if (!input.trim() || isLoading) return;
-    setIsLoading(true); //TODO: better loading state? specific to nextjs
+    setIsLoading(true);
     const conversationId = crypto.randomUUID();
-    sessionStorage.setItem(`chat-${conversationId}-initial`, input); //TODO: use zustand
-    router.push(`/chat/${conversationId}`); //TODO: use params
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await submitChat();
+    // Store first message in Zustand for instant render on chat page
+    setInitialMessage(conversationId, input);
+    router.push(`/chat/${conversationId}`);
   };
 
   return (
@@ -35,14 +33,14 @@ export default function ChatPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 1.2, ease: "easeOut" }}
       >
-        <form onSubmit={handleSubmit} className="relative group">
+        <form onSubmit={() => submitChat()} className="relative group">
           <div className="relative">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
-                  handleSubmit(e);
+                  submitChat();
                 }
               }}
               placeholder="Ask me anything..."

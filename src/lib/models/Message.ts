@@ -28,7 +28,7 @@ const MessageSchema = new Schema(
   { timestamps: false }
 );
 
-MessageSchema.index({ chatId: 1, order: 1 });
+MessageSchema.index({ chatId: 1, createdAt: 1 }, { unique: true });
 
 export type Message = InferSchemaType<typeof MessageSchema>;
 export type MessageModel = Model<Message>;
@@ -36,4 +36,3 @@ export type MessageModel = Model<Message>;
 const Message =
   (models.Message as MessageModel) || model<Message>("Message", MessageSchema);
 export default Message;
-
