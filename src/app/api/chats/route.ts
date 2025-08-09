@@ -109,3 +109,106 @@ export async function POST(req: Request) {
     );
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const chatId = searchParams.get("chatId");
+
+    if (!chatId) {
+      return NextResponse.json(
+        { error: "Chat ID is required" },
+        { status: 400 }
+      );
+    }
+
+    await connectToDatabase();
+
+    // Delete all messages associated with the chat
+    await Message.deleteMany({ chatId });
+
+    // Delete the chat
+    const deletedChat = await Chat.findOneAndDelete({ chatId });
+
+    if (!deletedChat) {
+      return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Chat deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting chat:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json();
+    const { chatId, title, autoGenerate } = body as {
+      chatId: string;
+      title?: string;
+      autoGenerate?: boolean;
+    };
+
+    if (!chatId) {
+      return NextResponse.json(
+        { error: "Chat ID is required" },
+        { status: 400 }
+      );
+    }
+
+    await connectToDatabase();
+
+    let finalTitle = title;
+
+    // If autoGenerate is true, generate title from first message
+    if (autoGenerate) {
+      try {
+        const firstMessage = await Message.findOne({ chatId, order: 0 }).lean();
+        if (firstMessage) {
+          const generatedTitle = await generateChatTitleFromFirstMessage(
+            firstMessage.text
+          );
+          if (generatedTitle) {
+            finalTitle = generatedTitle;
+          }
+        }
+      } catch (error) {
+        console.warn("Failed to generate title:", error);
+        // Continue with provided title or fall back to existing
+      }
+    }
+
+    const updatedChat = await Chat.findOneAndUpdate(
+      { chatId },
+      {
+        $set: {
+          ...(finalTitle && { title: finalTitle }),
+          updatedAt: new Date(),
+        },
+      },
+      { new: true }
+    );
+
+    if (!updatedChat) {
+      return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      chat: updatedChat,
+      message: "Chat updated successfully",
+    });
+  } catch (error) {
+    console.error("Error updating chat:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}

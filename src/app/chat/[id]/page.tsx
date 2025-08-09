@@ -368,7 +368,7 @@ const ChatPage = () => {
 
           {/* Input Area */}
           <motion.div
-            className="fixed bottom-0 left-60 right-0 mx-auto max-w-4xl px-4 md:px-0 w-full pb-6"
+            className="fixed bottom-0 left-80 right-0 mx-auto max-w-4xl px-4 md:px-0 w-full pb-6"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}

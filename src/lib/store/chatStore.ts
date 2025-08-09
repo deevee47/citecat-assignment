@@ -50,6 +50,7 @@ type ChatStore = {
   prependNewChat: (chat: ChatListItem) => void;
   updateChatInList: (chatId: string, updates: Partial<ChatListItem>) => void;
   updateChatTitle: (chatId: string, title: string) => void;
+  removeChatFromList: (chatId: string) => void;
   shouldRefreshChatList: () => boolean;
   resetChatList: () => void;
 };
@@ -174,6 +175,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         chats: state.chatList.chats.map((chat) =>
           chat.chatId === chatId ? { ...chat, title } : chat
         ),
+      },
+    })),
+
+  removeChatFromList: (chatId: string) =>
+    set((state) => ({
+      chatList: {
+        ...state.chatList,
+        chats: state.chatList.chats.filter((chat) => chat.chatId !== chatId),
       },
     })),
 
