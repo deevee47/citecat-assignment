@@ -6,7 +6,11 @@ import { MessageSquare, Plus, Trash2, Edit3, Wand2, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useChatList } from "@/lib/hooks/useChatList";
 
-const ChatSidebar = memo(() => {
+interface ChatSidebarProps {
+  onClose?: () => void;
+}
+
+const ChatSidebar = memo(({ onClose }: ChatSidebarProps) => {
   const router = useRouter();
   const params = useParams();
   const currentChatId = params.id as string;
@@ -66,13 +70,21 @@ const ChatSidebar = memo(() => {
   const handleChatClick = useCallback(
     (chatId: string) => {
       router.push(`/chat/${chatId}`);
+      // Close sidebar on mobile after navigation
+      if (onClose) {
+        onClose();
+      }
     },
-    [router]
+    [router, onClose]
   );
 
   const handleNewChat = useCallback(() => {
     router.push("/");
-  }, [router]);
+    // Close sidebar on mobile after navigation
+    if (onClose) {
+      onClose();
+    }
+  }, [router, onClose]);
 
   const handleRetry = useCallback(() => {
     retryFetch();
@@ -131,7 +143,6 @@ const ChatSidebar = memo(() => {
     [renameChat]
   );
 
-
   if (loading) {
     return (
       <div className="w-80 bg-black/20 backdrop-blur-xl border-r border-white/10 flex flex-col">
@@ -175,9 +186,18 @@ const ChatSidebar = memo(() => {
   }
 
   return (
-    <div className="w-80 bg-black/20 backdrop-blur-xl border-r border-white/10 flex flex-col h-screen">
+    <div className="w-80 bg-black/20 backdrop-blur-xl border-r border-white/10 flex flex-col h-screen relative">
+      {/* Mobile close button */}
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="lg:hidden absolute top-4 right-4 z-10 p-2 text-white/60 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+        >
+          <X size={20} />
+        </button>
+      )}
       {/* Header */}
-      <div className="p-4 border-b border-white/10">
+      <div className="p-4 border-b border-white/10 pr-16 lg:pr-4">
         <button
           onClick={handleNewChat}
           className="w-full flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-all duration-200 group"
@@ -208,7 +228,7 @@ const ChatSidebar = memo(() => {
             {chats.map((chat, index) => (
               <div
                 key={chat.chatId}
-                className={`group relative rounded-md p-2 transition-all duration-200 ${
+                className={`group relative rounded-md p-3 lg:p-2 transition-all duration-200 ${
                   currentChatId === chat.chatId
                     ? "bg-white/20 border border-white/30"
                     : "bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/20"
@@ -263,14 +283,13 @@ const ChatSidebar = memo(() => {
                               "New Chat"
                             )}
                           </h3>
-                          
                         </>
                       )}
                     </div>
                   </div>
 
                   {editingChatId !== chat.chatId && (
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                       {/* Edit/Rename Button */}
                       <button
                         onClick={(e) => {
@@ -342,7 +361,7 @@ const ChatSidebar = memo(() => {
             {hasMore && (
               <div
                 ref={loadMoreRef}
-                className="h-10 flex items-center justify-center"
+                className="h-10 flex items-center justify-center mb-4"
               >
                 {loadingMore && (
                   <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
@@ -351,7 +370,7 @@ const ChatSidebar = memo(() => {
             )}
 
             {!hasMore && chats.length > 0 && (
-              <div className="text-center py-4">
+              <div className="text-center py-4 pb-8">
                 <p className="text-white/40 italic text-xs">
                   That's all your chats, qt :P
                 </p>

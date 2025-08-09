@@ -28,9 +28,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div className="min-h-screen relative">
+        <div className="min-h-screen relative overflow-x-hidden">
           <BackgroundGradient />
-          <div className="relative z-10">{children}</div>
+          <div className="relative z-10 w-full">{children}</div>
         </div>
       </body>
     </html>

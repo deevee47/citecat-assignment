@@ -72,7 +72,7 @@ const ChatFallback = () => {
 
   return (
     <motion.div
-      className="flex-1 flex items-center justify-center"
+      className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
@@ -81,16 +81,18 @@ const ChatFallback = () => {
       <div className="w-full max-w-4xl mx-auto">
         {/* Welcome Greeting */}
         <motion.div
-          className="mb-8"
+          className="mb-6 sm:mb-8 text-center sm:text-left"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
         >
-          <h1 className="text-3xl font-bold text-white mb-2">{greeting}</h1>
+          <h1 className="text-2xl sm:text-3xl lg:text-3xl font-bold text-white mb-2">
+            {greeting}
+          </h1>
         </motion.div>
 
         {/* Task Suggestions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Column 1: Seamlessly perform tasks */}
           <motion.div
             className="space-y-3"
@@ -98,14 +100,14 @@ const ChatFallback = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.5, ease: "easeOut" }}
           >
-            <h3 className="text-white text-sm font-medium mb-4">
+            <h3 className="text-white text-sm sm:text-base font-medium mb-4">
               Seamlessly perform tasks across your favourite apps
             </h3>
 
             {appConnections.map((app, index) => (
               <motion.div
                 key={index}
-                className="bg-black/20 backdrop-blur-xl border border-white/10 rounded-xl p-3 hover:bg-black/30 transition-all duration-200 cursor-pointer group"
+                className="bg-black/20 backdrop-blur-xl border border-white/10 rounded-xl p-3 sm:p-4 hover:bg-black/30 transition-all duration-200 cursor-pointer group"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
@@ -116,20 +118,20 @@ const ChatFallback = () => {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 bg-white/10 rounded-lg flex items-center justify-center">
+                    <div className="w-6 h-6 sm:w-7 sm:h-7 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
                       <span className="text-white">{app.icon}</span>
                     </div>
-                    <div>
-                      <div className="text-white text-sm font-medium">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-white text-sm sm:text-base font-medium">
                         {app.name}{" "}
-                        <span className="text-gray-400 text-xs">
+                        <span className="text-gray-400 text-xs sm:text-sm block sm:inline">
                           {app.description}
                         </span>
                       </div>
                     </div>
                   </div>
                   {app.action && (
-                    <div className="bg-white/10 text-white text-xs px-2 py-1 rounded-full border border-white/10">
+                    <div className="bg-white/10 text-white text-xs sm:text-sm px-2 py-1 rounded-full border border-white/10 flex-shrink-0">
                       {app.action}
                     </div>
                   )}
@@ -145,14 +147,14 @@ const ChatFallback = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.7, ease: "easeOut" }}
           >
-            <h3 className="text-white text-sm font-medium mb-4">
+            <h3 className="text-white text-sm sm:text-base font-medium mb-4">
               Things you can ask me
             </h3>
 
             {askMeSuggestions.map((task, index) => (
               <motion.div
                 key={index}
-                className="bg-black/20 backdrop-blur-xl border border-white/10 rounded-xl p-3 hover:bg-black/30 transition-all duration-200 cursor-pointer group"
+                className="bg-black/20 backdrop-blur-xl border border-white/10 rounded-xl p-3 sm:p-4 hover:bg-black/30 transition-all duration-200 cursor-pointer group"
                 onClick={() => submitChat(task)}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -162,10 +164,12 @@ const ChatFallback = () => {
                   ease: "easeOut",
                 }}
               >
-                <div className="flex items-center justify-between">
-                  <div className="text-white text-sm">{task}</div>
-                  <div className="w-5 h-5 bg-white/10 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
-                    <ArrowUp size={12} className="text-white" />
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-white text-sm sm:text-base flex-1 min-w-0">
+                    {task}
+                  </div>
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-white/10 rounded-full flex items-center justify-center opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all duration-200 flex-shrink-0">
+                    <ArrowUp size={12} className="sm:w-3 sm:h-3 text-white" />
                   </div>
                 </div>
               </motion.div>

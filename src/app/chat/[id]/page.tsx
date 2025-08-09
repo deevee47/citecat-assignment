@@ -239,7 +239,7 @@ const ChatPage = () => {
       {/* Messages Area */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto px-4 pt-4 pb-32 scroll-smooth scrollbar-pretty"
+        className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-4 pt-16 lg:pt-4 pb-32 scroll-smooth scrollbar-pretty"
       >
         <div className="w-full max-w-4xl mx-auto space-y-4">
           {isFetchingMessages && (
@@ -257,7 +257,7 @@ const ChatPage = () => {
                   key={msg.id}
                   className={`flex flex-col ${
                     msg.role === "user" ? "items-end" : "items-start"
-                  }`}
+                  } w-full`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -283,13 +283,13 @@ const ChatPage = () => {
                     {/* Assistant/User message content - appears below */}
                     {msg.role && (
                       <div
-                        className={`p-3 rounded-xl ${
+                        className={`p-3 sm:p-4 rounded-xl max-w-full break-words ${
                           msg.role === "user"
                             ? "bg-white/10 rounded-tr-none w-full"
                             : "bg-black/20 rounded-tl-none w-full"
                         }`}
                       >
-                        <p className="text-white text-sm leading-relaxed whitespace-pre-wrap">
+                        <p className="text-white text-sm sm:text-base leading-relaxed whitespace-pre-wrap break-words">
                           {mainContent}
                         </p>
                       </div>
@@ -324,8 +324,8 @@ const ChatPage = () => {
                   ></div>
                 </div>
               </div>
-              <div className="bg-black/20 rounded-xl rounded-tl-none w-full p-3">
-                <p className="text-white text-sm leading-relaxed whitespace-pre-wrap">
+              <div className="bg-black/20 rounded-xl rounded-tl-none w-full p-3 sm:p-4 max-w-full">
+                <p className="text-white text-sm sm:text-base leading-relaxed whitespace-pre-wrap break-words">
                   {streamingMessage}
                   <span className="inline-block w-2 h-5 bg-white animate-pulse ml-1"></span>
                 </p>
@@ -347,7 +347,7 @@ const ChatPage = () => {
                 </Avatar>
                 <span className="text-xs text-gray-400">Assistant</span>
               </div>
-              <div className="bg-black/20 rounded-xl rounded-tl-none w-full p-3">
+              <div className="bg-black/20 rounded-xl rounded-tl-none w-full p-3 sm:p-4">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-white rounded-full animate-bounce"></div>
                   <div
@@ -368,7 +368,7 @@ const ChatPage = () => {
 
           {/* Input Area */}
           <motion.div
-            className="fixed bottom-0 left-80 right-0 mx-auto max-w-4xl px-4 md:px-0 w-full pb-6"
+            className="fixed bottom-0 left-0 lg:left-80 right-0 mx-auto max-w-4xl px-4 sm:px-0  w-full pb-6"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
@@ -385,7 +385,7 @@ const ChatPage = () => {
                     }
                   }}
                   placeholder="Ask me anything..."
-                  className="w-full text-sm h-24 pl-4 pr-24 bg-white/10 backdrop-blur-xl border-white/20 text-white placeholder:text-gray-400 focus:bg-white/15 focus:border-white/30 transition-all duration-300 group-hover:border-white/30"
+                  className="w-full text-sm h-20 sm:h-24 pl-4 pr-16 sm:pr-24 bg-white/10 backdrop-blur-xl border-white/20 text-white placeholder:text-gray-400 focus:bg-white/15 focus:border-white/30 transition-all duration-300 group-hover:border-white/30 resize-none"
                   disabled={isLoading || isStreaming}
                   autoFocus
                 />
@@ -396,17 +396,17 @@ const ChatPage = () => {
                 disabled={isLoading || isStreaming || !input.trim()}
               >
                 <ArrowUp
-                  size={18}
-                  className="transition-transform duration-300 group-hover:translate-y-[-2px]"
+                  size={16}
+                  className="sm:w-[18px] sm:h-[18px] transition-transform duration-300 group-hover:translate-y-[-2px]"
                 />
               </motion.button>
               {(isLoading || isStreaming) && (
-                <div className="absolute right-14 top-1/2 transform -translate-y-1/2">
-                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                <div className="absolute right-12 sm:right-14 top-1/2 transform -translate-y-1/2">
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                 </div>
               )}
             </form>
-            <p className="text-xs text-gray-400 mt-2 text-center">
+            <p className="text-xs sm:text-xs text-gray-400 mt-2 text-center px-2">
               Press Enter to send, Shift + Enter for new line
             </p>
           </motion.div>
