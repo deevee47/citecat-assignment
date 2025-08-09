@@ -262,7 +262,11 @@ const ChatPage = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                 >
-                  <div className="flex items-center gap-2 mb-1">
+                  <div
+                    className={`flex items-center gap-2 mb-1 ${
+                      msg.role === "user" ? "justify-end" : "justify-start"
+                    }`}
+                  >
                     {msg.role === "assistant" ? (
                       <Avatar>
                         <Bot size={14} className="text-white" />
@@ -276,17 +280,19 @@ const ChatPage = () => {
                   </div>
 
                   <div
-                    className={` ${
-                      msg.role === "user" ? "flex flex-col items-end" : ""
+                    className={`w-full ${
+                      msg.role === "user"
+                        ? "flex justify-end"
+                        : "flex justify-start"
                     }`}
                   >
                     {/* Assistant/User message content - appears below */}
                     {msg.role && (
                       <div
-                        className={`p-3 sm:p-4 rounded-xl max-w-full break-words ${
+                        className={`p-3 sm:p-4 rounded-xl break-words max-w-[85%] sm:max-w-[80%] ${
                           msg.role === "user"
-                            ? "bg-white/10 rounded-tr-none w-full"
-                            : "bg-black/20 rounded-tl-none w-full"
+                            ? "bg-white/10 rounded-tr-none"
+                            : "bg-black/20 rounded-tl-none"
                         }`}
                       >
                         <p className="text-white text-sm sm:text-base leading-relaxed whitespace-pre-wrap break-words">
@@ -324,7 +330,7 @@ const ChatPage = () => {
                   ></div>
                 </div>
               </div>
-              <div className="bg-black/20 rounded-xl rounded-tl-none w-full p-3 sm:p-4 max-w-full">
+              <div className="bg-black/20 rounded-xl rounded-tl-none p-3 sm:p-4 max-w-[85%] sm:max-w-[80%]">
                 <p className="text-white text-sm sm:text-base leading-relaxed whitespace-pre-wrap break-words">
                   {streamingMessage}
                   <span className="inline-block w-2 h-5 bg-white animate-pulse ml-1"></span>
@@ -347,7 +353,7 @@ const ChatPage = () => {
                 </Avatar>
                 <span className="text-xs text-gray-400">Assistant</span>
               </div>
-              <div className="bg-black/20 rounded-xl rounded-tl-none w-full p-3 sm:p-4">
+              <div className="bg-black/20 rounded-xl rounded-tl-none p-3 sm:p-4 max-w-[85%] sm:max-w-[80%]">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-white rounded-full animate-bounce"></div>
                   <div

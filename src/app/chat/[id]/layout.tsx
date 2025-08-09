@@ -26,15 +26,15 @@ export default function ChatLayout({ children }: ChatLayoutProps) {
 
       {/* Sidebar */}
       <aside
-        className={`relative z-50 lg:z-10 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        className={`z-50 lg:z-10 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:block fixed lg:relative h-full lg:h-auto w-80`}
+        } fixed lg:relative h-full lg:h-auto w-80 top-0 left-0`}
       >
         <ChatSidebar onClose={() => setSidebarOpen(false)} />
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 relative z-10 w-full lg:w-auto">
+      <main className="flex-1 relative z-10 w-full lg:w-auto lg:ml-0">
         {/* Mobile menu button */}
         <button
           onClick={() => setSidebarOpen(true)}
@@ -43,7 +43,7 @@ export default function ChatLayout({ children }: ChatLayoutProps) {
           <Menu size={20} />
         </button>
 
-        {children}
+        <div className="w-full h-full">{children}</div>
       </main>
     </div>
   );
