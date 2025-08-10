@@ -92,15 +92,12 @@ const ChatPage = () => {
               return;
             }
           } else {
-            // Other error, check local store as fallback
-            const existing = getMessagesByChatId(conversationId);
-            if (existing && existing.length > 0) {
-              setMessages(conversationId, existing);
-            } else {
-              router.replace("/");
-              return;
-            }
-          }
+            
+            router.replace("/");
+            return;
+            } 
+            
+          
         } catch (fetchError) {
           console.warn(
             "Failed to fetch from backend, checking local store:",
@@ -167,6 +164,7 @@ const ChatPage = () => {
             body: JSON.stringify({
               sender: "user",
               text: firstUserMessage.content,
+              saveUserMessage: false,
             }),
           });
 

@@ -31,9 +31,10 @@ export async function GET(req: Request, context: { params: { id: string } }) {
 export async function POST(req: Request, context: { params: { id: string } }) {
   const { id } = await context.params;
   try {
-    const { sender, text } = (await req.json()) as {
+    const { sender, text, saveUserMessage } = (await req.json()) as {
       sender?: "user" | "ai";
       text?: string;
+      saveUserMessage?: boolean;
     };
 
     if (
@@ -58,11 +59,13 @@ export async function POST(req: Request, context: { params: { id: string } }) {
       .lean();
     const nextOrder = last.length > 0 ? (last[0].order ?? 0) + 1 : 0;
 
-    // Save user message
-    try {
-      await Message.create({ chatId: id, sender, text, order: nextOrder });
-    } catch (err: any) {
-      console.error(err);
+    // Save user message if saveUserMessage is true
+    if (sender === "user" && saveUserMessage) {
+      try {
+        await Message.create({ chatId: id, sender, text, order: nextOrder });
+      } catch (err: any) {
+        console.error(err);
+      }
     }
 
     // If it's a user message, generate AI response
