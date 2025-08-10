@@ -122,9 +122,9 @@ const ChatPage = () => {
 
     if (conversationId) initFromStoreOrFetch();
     return () => {
-      isCancelled = true; //TODO: what is isCancelled
+      isCancelled = true;
     };
-  }, [conversationId, router]); //TODO: why is router needed here?
+  }, [conversationId, router]);
 
   // Effect to trigger AI response for initial message
   useEffect(() => {
