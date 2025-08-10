@@ -35,6 +35,19 @@ type ChatStore = {
   addMessage: (chatId: string, message: UiMessage) => void;
   clearChat: (chatId: string) => void;
 
+  // Streaming state
+  streamingMessage: string;
+  isStreaming: boolean;
+  setStreamingMessage: (message: string) => void;
+  setIsStreaming: (isStreaming: boolean) => void;
+
+  // Streaming actions
+  streamMessage: (
+    chatId: string,
+    text: string,
+    options?: { appendToStore?: boolean; saveUserMessage?: boolean }
+  ) => Promise<void>;
+
   // Chat list state
   chatList: ChatListState;
 
@@ -60,6 +73,10 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 export const useChatStore = create<ChatStore>((set, get) => ({
   // Messages state
   chatIdToMessages: {},
+
+  // Streaming state
+  streamingMessage: "",
+  isStreaming: false,
 
   // Chat list initial state
   chatList: {
@@ -111,6 +128,105 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       delete clone[chatId];
       return { chatIdToMessages: clone };
     }),
+
+  // Streaming actions
+  setStreamingMessage: (message: string) => set({ streamingMessage: message }),
+
+  setIsStreaming: (isStreaming: boolean) => set({ isStreaming }),
+
+  streamMessage: async (
+    chatId: string,
+    text: string,
+    options: { appendToStore?: boolean; saveUserMessage?: boolean } = {}
+  ) => {
+    const { appendToStore = true, saveUserMessage = true } = options;
+
+    try {
+      // Add user message to store if requested
+      if (appendToStore && saveUserMessage) {
+        const userMessage: UiMessage = {
+          id: crypto.randomUUID(),
+          role: "user",
+          content: text,
+        };
+        get().addMessage(chatId, userMessage);
+      }
+
+      // Start streaming
+      set({ isStreaming: true, streamingMessage: "" });
+
+      // Send message and start streaming response
+      const response = await fetch(`/api/chat/${chatId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender: "user",
+          text: text,
+          saveUserMessage: saveUserMessage,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send message");
+      }
+
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("No response body");
+      }
+
+      const decoder = new TextDecoder();
+      let accumulatedMessage = "";
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split("\n");
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+
+                if (data.type === "chunk") {
+                  accumulatedMessage += data.content;
+                  set({ streamingMessage: accumulatedMessage });
+                } else if (data.type === "complete") {
+                  // Add the complete AI message to the store
+                  if (appendToStore) {
+                    const aiMessage: UiMessage = {
+                      id: crypto.randomUUID(),
+                      role: "assistant",
+                      content: data.content,
+                    };
+                    get().addMessage(chatId, aiMessage);
+                  }
+                  set({ streamingMessage: "" });
+                  break;
+                } else if (data.type === "error") {
+                  console.error("Streaming error:", data.error);
+                  break;
+                }
+              } catch (parseError) {
+                console.error("Failed to parse SSE data:", parseError);
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    } catch (error) {
+      console.error("Error in streamMessage:", error);
+      throw error;
+    } finally {
+      set({ isStreaming: false });
+    }
+  },
 
   // Chat list actions
   setChatListLoading: (loading: boolean) =>
