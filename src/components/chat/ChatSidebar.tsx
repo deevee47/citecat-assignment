@@ -102,7 +102,7 @@ const ChatSidebar = memo(({ onClose }: ChatSidebarProps) => {
         }
       }
     },
-    [deleteChat, currentChatId, router]
+    [deleteChat, currentChatId]
   );
 
   const handleStartRename = useCallback(

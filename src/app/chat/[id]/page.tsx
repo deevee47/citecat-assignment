@@ -113,7 +113,7 @@ const ChatPage = () => {
     return () => {
       isCancelled = true;
     };
-  }, [conversationId, router]);
+  }, [conversationId]);
 
   // Effect to trigger AI response for initial message
   useEffect(() => {
